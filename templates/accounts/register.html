@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% load i18n crispy_forms_tags %}
+
+{% block title %}KisanMitra | {% trans "Farmer Registration" %}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-9 col-lg-8">
+            <div class="card card-km p-4 p-md-5 border-0 shadow-sm bg-white rounded-4">
+                <div class="text-center mb-4">
+                    <span class="fs-1 text-success d-block mb-1">🌾</span>
+                    <h3 class="fw-bold text-success mb-1">{% trans "Farmer Registration" %}</h3>
+                    <p class="text-muted small mb-0">Create your KisanMitra account to get personalized farming guidance</p>
+                </div>
+
+                <form method="post" id="registrationForm" novalidate>
+                    {% csrf_token %}
+
+                    <h6 class="fw-bold text-success text-uppercase small mb-3 border-bottom pb-2">
+                        <i class="bi bi-person-fill me-1"></i> Personal Information
+                    </h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            {{ form.first_name|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.last_name|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.mobile_number|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.email|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.password|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.confirm_password|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.age|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.gender|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.preferred_language|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-success text-uppercase small mb-2 border-bottom pb-2">
+                        <i class="bi bi-geo-alt-fill me-1"></i> Location Details
+                    </h6>
+                    <p class="small text-muted mb-3">Select your State first, then District, Taluka, and Village options will automatically load.</p>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            {{ form.state|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.district|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.taluka|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.village|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100 mt-4 py-2 fw-semibold fs-6 shadow-sm">
+                        <i class="bi bi-check-circle-fill me-1"></i> {% trans "Register" %}
+                    </button>
+                </form>
+
+                <div class="text-center mt-4 pt-3 border-top">
+                    <span class="text-muted small">{% trans "Already have an account?" %}</span>
+                    <a href="{% url 'accounts:login' %}" class="text-success fw-bold text-decoration-none ms-1">
+                        {% trans "Login Here" %}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const stateSelect = document.getElementById("id_state");
+    const districtSelect = document.getElementById("id_district");
+    const talukaSelect = document.getElementById("id_taluka");
+    const villageSelect = document.getElementById("id_village");
+
+    function setPlaceholder(element, text) {
+        if (!element) return;
+        element.innerHTML = `<option value="">${text}</option>`;
+    }
+
+    // State change -> Load Districts
+    if (stateSelect) {
+        stateSelect.addEventListener("change", function() {
+            const stateId = this.value;
+            setPlaceholder(districtSelect, "- Select District -");
+            setPlaceholder(talukaSelect, "- Select Taluka -");
+            setPlaceholder(villageSelect, "- Select Village -");
+
+            if (!stateId) return;
+
+            setPlaceholder(districtSelect, "Loading districts...");
+            fetch("{% url 'accounts:ajax_load_districts' %}?state_id=" + encodeURIComponent(stateId))
+                .then(response => response.json())
+                .then(data => {
+                    setPlaceholder(districtSelect, "- Select District -");
+                    if (data && data.length > 0) {
+                        data.forEach(item => {
+                            const label = item.name_mr ? `${item.name} (${item.name_mr})` : item.name;
+                            districtSelect.innerHTML += `<option value="${item.id}">${label}</option>`;
+                        });
+                    } else {
+                        setPlaceholder(districtSelect, "No districts found");
+                    }
+                })
+                .catch(err => {
+                    console.error("Error loading districts:", err);
+                    setPlaceholder(districtSelect, "- Select District -");
+                });
+        });
+    }
+
+    // District change -> Load Talukas
+    if (districtSelect) {
+        districtSelect.addEventListener("change", function() {
+            const districtId = this.value;
+            setPlaceholder(talukaSelect, "- Select Taluka -");
+            setPlaceholder(villageSelect, "- Select Village -");
+
+            if (!districtId) return;
+
+            setPlaceholder(talukaSelect, "Loading talukas...");
+            fetch("{% url 'accounts:ajax_load_talukas' %}?district_id=" + encodeURIComponent(districtId))
+                .then(response => response.json())
+                .then(data => {
+                    setPlaceholder(talukaSelect, "- Select Taluka -");
+                    if (data && data.length > 0) {
+                        data.forEach(item => {
+                            const label = item.name_mr ? `${item.name} (${item.name_mr})` : item.name;
+                            talukaSelect.innerHTML += `<option value="${item.id}">${label}</option>`;
+                        });
+                    } else {
+                        setPlaceholder(talukaSelect, "No talukas found");
+                    }
+                })
+                .catch(err => {
+                    console.error("Error loading talukas:", err);
+                    setPlaceholder(talukaSelect, "- Select Taluka -");
+                });
+        });
+    }
+
+    // Taluka change -> Load Villages
+    if (talukaSelect) {
+        talukaSelect.addEventListener("change", function() {
+            const talukaId = this.value;
+            setPlaceholder(villageSelect, "- Select Village -");
+
+            if (!talukaId) return;
+
+            setPlaceholder(villageSelect, "Loading villages...");
+            fetch("{% url 'accounts:ajax_load_villages' %}?taluka_id=" + encodeURIComponent(talukaId))
+                .then(response => response.json())
+                .then(data => {
+                    setPlaceholder(villageSelect, "- Select Village -");
+                    if (data && data.length > 0) {
+                        data.forEach(item => {
+                            const label = item.name_mr ? `${item.name} (${item.name_mr})` : item.name;
+                            villageSelect.innerHTML += `<option value="${item.id}">${label}</option>`;
+                        });
+                    } else {
+                        setPlaceholder(villageSelect, "No villages found");
+                    }
+                })
+                .catch(err => {
+                    console.error("Error loading villages:", err);
+                    setPlaceholder(villageSelect, "- Select Village -");
+                });
+        });
+    }
+</script>
+{% endblock %}

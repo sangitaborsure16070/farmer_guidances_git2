@@ -1,0 +1,371 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Market Prices (Mandi Rates)" %} | 🌾 KisanMitra{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row align-items-center mb-4">
+        <div class="col-md-8">
+            <h2 class="fw-bold text-success mb-1">
+                <i class="bi bi-graph-up-arrow"></i> {% trans "Live Mandi Rates" %}
+            </h2>
+            <p class="text-muted mb-0">{% trans "Compare daily crop prices across local agricultural markets." %}</p>
+        </div>
+        <div class="col-md-4 text-md-end mt-2 mt-md-0">
+            <span id="record-count-badge" class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6">
+                <i class="bi bi-check2-circle me-1"></i> <span id="count-number">{{ total_count|default:prices|length }}</span> {% trans "records available" %}
+            </span>
+        </div>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-3 p-md-4">
+            <form id="mandi-filter-form" method="GET" action="{% url 'core:market_prices' %}" class="row g-3 align-items-end">
+                <!-- State Input -->
+                <div class="col-md-3 col-sm-6">
+                    <label for="state-input" class="form-label small fw-bold text-muted mb-1">
+                        <i class="bi bi-geo-alt-fill text-success me-1"></i>{% trans "State" %}
+                    </label>
+                    <input type="text" id="state-input" name="state" class="form-control" value="{{ selected_state }}" placeholder="e.g. Maharashtra" list="state-options" autocomplete="off">
+                    <datalist id="state-options">
+                        <option value="Maharashtra">Maharashtra (महाराष्ट्र)</option>
+                        <option value="Gujarat">Gujarat (गुजरात)</option>
+                        <option value="Madhya Pradesh">Madhya Pradesh (मध्य प्रदेश)</option>
+                        <option value="Karnataka">Karnataka (कर्नाटक)</option>
+                    </datalist>
+                </div>
+
+                <!-- District Input -->
+                <div class="col-md-3 col-sm-6">
+                    <label for="district-input" class="form-label small fw-bold text-muted mb-1">
+                        <i class="bi bi-pin-map text-success me-1"></i>{% trans "District" %}
+                    </label>
+                    <input type="text" id="district-input" name="district" class="form-control" value="{{ selected_district }}" placeholder="{% trans 'All or e.g. Pune, Nashik' %}" list="district-options" autocomplete="off">
+                    <datalist id="district-options">
+                        {% for d in available_districts %}
+                        <option value="{{ d }}">{{ d }}</option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+
+                <!-- Commodity Input -->
+                <div class="col-md-4 col-sm-8">
+                    <label for="commodity-input" class="form-label small fw-bold text-muted mb-1">
+                        <i class="bi bi-basket-fill text-success me-1"></i>{% trans "Commodity / Crop" %}
+                    </label>
+                    <input type="text" id="commodity-input" name="commodity" class="form-control" value="{{ selected_commodity }}" placeholder="{% trans 'All or e.g. Onion, Wheat' %}" list="commodity-options" autocomplete="off">
+                    <datalist id="commodity-options">
+                        {% for c in available_commodities %}
+                        <option value="{{ c }}">{{ c }}</option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+
+                <!-- Filter Actions -->
+                <div class="col-md-2 col-sm-4 d-flex gap-2">
+                    <button type="submit" id="filter-btn" class="btn btn-success w-100 fw-semibold d-flex align-items-center justify-content-center">
+                        <i class="bi bi-funnel-fill me-1"></i> <span id="btn-text">{% trans "Filter" %}</span>
+                    </button>
+                    <a href="{% url 'core:market_prices' %}" id="reset-btn" class="btn btn-outline-secondary" title="{% trans 'Reset filters' %}">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </a>
+                </div>
+            </form>
+
+            <!-- Quick Filter Chips -->
+            <div class="mt-3 pt-3 border-top d-flex flex-wrap align-items-center gap-1">
+                <span class="small fw-bold text-muted me-2"><i class="bi bi-lightning-charge-fill text-warning"></i> {% trans "Quick Filter" %}:</span>
+                <button type="button" class="btn btn-sm crop-chip {% if not selected_commodity %}btn-success{% else %}btn-outline-secondary{% endif %} rounded-pill px-3 py-1" data-crop="">
+                    {% trans "All" %}
+                </button>
+                <button type="button" class="btn btn-sm crop-chip {% if selected_commodity|lower == 'onion' or selected_commodity == 'कांदा' %}btn-success{% else %}btn-outline-secondary{% endif %} rounded-pill px-3 py-1" data-crop="Onion">
+                    🧅 {% trans "Onion" %}
+                </button>
+                <button type="button" class="btn btn-sm crop-chip {% if selected_commodity|lower == 'wheat' or selected_commodity == 'गहू' %}btn-success{% else %}btn-outline-secondary{% endif %} rounded-pill px-3 py-1" data-crop="Wheat">
+                    🌾 {% trans "Wheat" %}
+                </button>
+                <button type="button" class="btn btn-sm crop-chip {% if selected_commodity|lower == 'soyabean' or selected_commodity == 'सोयाबीन' %}btn-success{% else %}btn-outline-secondary{% endif %} rounded-pill px-3 py-1" data-crop="Soyabean">
+                    🌱 {% trans "Soyabean" %}
+                </button>
+                <button type="button" class="btn btn-sm crop-chip {% if selected_commodity|lower == 'cotton' or selected_commodity == 'कापूस' %}btn-success{% else %}btn-outline-secondary{% endif %} rounded-pill px-3 py-1" data-crop="Cotton">
+                    ⚪ {% trans "Cotton" %}
+                </button>
+                <button type="button" class="btn btn-sm crop-chip {% if selected_commodity|lower == 'tomato' or selected_commodity == 'टोमॅटो' %}btn-success{% else %}btn-outline-secondary{% endif %} rounded-pill px-3 py-1" data-crop="Tomato">
+                    🍅 {% trans "Tomato" %}
+                </button>
+                <button type="button" class="btn btn-sm crop-chip {% if 'gram' in selected_commodity|lower or selected_commodity == 'हरभरा' %}btn-success{% else %}btn-outline-secondary{% endif %} rounded-pill px-3 py-1" data-crop="Gram / Chickpea">
+                    🫘 {% trans "Gram" %}
+                </button>
+                <button type="button" class="btn btn-sm crop-chip {% if selected_commodity|lower == 'sugarcane' or selected_commodity == 'ऊस' %}btn-success{% else %}btn-outline-secondary{% endif %} rounded-pill px-3 py-1" data-crop="Sugarcane">
+                    🎋 {% trans "Sugarcane" %}
+                </button>
+                <button type="button" class="btn btn-sm crop-chip {% if selected_commodity|lower == 'maize' or selected_commodity == 'मका' %}btn-success{% else %}btn-outline-secondary{% endif %} rounded-pill px-3 py-1" data-crop="Maize">
+                    🌽 {% trans "Maize" %}
+                </button>
+                <button type="button" class="btn btn-sm crop-chip {% if selected_commodity|lower == 'tur / arhar' or selected_commodity == 'तूर' %}btn-success{% else %}btn-outline-secondary{% endif %} rounded-pill px-3 py-1" data-crop="Tur / Arhar">
+                    🍲 {% trans "Tur" %}
+                </button>
+                <button type="button" class="btn btn-sm crop-chip {% if selected_commodity|lower == 'pomegranate' or selected_commodity == 'डाळिंब' %}btn-success{% else %}btn-outline-secondary{% endif %} rounded-pill px-3 py-1" data-crop="Pomegranate">
+                    🍎 {% trans "Pomegranate" %}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Filter Indicator Banner -->
+    <div id="filter-status-banner" class="alert alert-light border shadow-sm py-2 px-3 mb-3 d-flex align-items-center justify-content-between {% if not selected_district and not selected_commodity %}d-none{% endif %}">
+        <div class="small text-muted">
+            <i class="bi bi-funnel text-success me-1"></i> <span id="active-filter-text">
+                {% if selected_district or selected_commodity %}
+                    {% trans "Filtered by" %}: 
+                    {% if selected_district %}<strong>{% trans "District" %}:</strong> {{ selected_district }} {% endif %}
+                    {% if selected_commodity %}<strong>{% trans "Crop" %}:</strong> {{ selected_commodity }}{% endif %}
+                {% endif %}
+            </span>
+        </div>
+        <button type="button" id="clear-filters-btn" class="btn btn-link btn-sm text-decoration-none text-danger p-0">
+            <i class="bi bi-x-circle me-1"></i>{% trans "Clear Filter" %}
+        </button>
+    </div>
+
+    <!-- Prices Table Card -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-success">
+                        <tr>
+                            <th class="ps-3">{% trans "Market / Mandi" %}</th>
+                            <th>{% trans "Commodity" %}</th>
+                            <th>{% trans "Variety" %}</th>
+                            <th class="text-end">{% trans "Min Price (₹/Qtl)" %}</th>
+                            <th class="text-end">{% trans "Max Price (₹/Qtl)" %}</th>
+                            <th class="text-end text-success pe-3">{% trans "Modal Rate (₹/Qtl)" %}</th>
+                            <th>{% trans "Date" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mandi-table-body">
+                        {% for item in prices %}
+                        <tr>
+                            <td class="ps-3 fw-bold text-dark">
+                                {{ item.market }} 
+                                <span class="text-muted small fw-normal d-block">({{ item.district }}, {{ item.state }})</span>
+                            </td>
+                            <td>
+                                <span class="fw-semibold text-success-emphasis">{{ item.commodity }}</span>
+                            </td>
+                            <td><span class="badge bg-light text-dark border px-2 py-1">{{ item.variety }}</span></td>
+                            <td class="text-end text-muted">₹{{ item.min_price }}</td>
+                            <td class="text-end text-muted">₹{{ item.max_price }}</td>
+                            <td class="text-end fw-bold text-success fs-6 pe-3">
+                                <span class="badge bg-success-subtle text-success fs-6 border border-success-subtle px-2 py-1">
+                                    ₹{{ item.modal_price }}
+                                </span>
+                            </td>
+                            <td class="small text-muted">
+                                <span class="badge bg-secondary-subtle text-secondary">{{ item.arrival_date }}</span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr id="empty-row">
+                            <td colspan="7" class="text-center py-5">
+                                <div class="text-muted">
+                                    <i class="bi bi-search display-6 d-block mb-2 text-secondary"></i>
+                                    <h5>{% trans "No price records found" %}</h5>
+                                    <p class="small mb-3">{% trans "Try choosing a different district or crop from the filters above." %}</p>
+                                    <button type="button" class="btn btn-outline-success btn-sm px-3" onclick="resetAllFilters()">
+                                        <i class="bi bi-arrow-clockwise me-1"></i> {% trans "View All Mandi Rates" %}
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const form = document.getElementById('mandi-filter-form');
+    const stateInput = document.getElementById('state-input');
+    const districtInput = document.getElementById('district-input');
+    const commodityInput = document.getElementById('commodity-input');
+    const filterBtn = document.getElementById('filter-btn');
+    const btnText = document.getElementById('btn-text');
+    const tbody = document.getElementById('mandi-table-body');
+    const countBadge = document.getElementById('count-number');
+    const statusBanner = document.getElementById('filter-status-banner');
+    const activeFilterText = document.getElementById('active-filter-text');
+    const clearFiltersBtn = document.getElementById('clear-filters-btn');
+    const cropChips = document.querySelectorAll('.crop-chip');
+
+    // Perform AJAX Filter fetch
+    function applyFilter() {
+        const state = stateInput.value.trim();
+        const district = districtInput.value.trim();
+        const commodity = commodityInput.value.trim();
+
+        // Update button loading state
+        filterBtn.disabled = true;
+        btnText.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> {% trans "Loading..." %}`;
+
+        // Show loading in table if taking longer
+        tbody.style.opacity = '0.5';
+
+        const params = new URLSearchParams();
+        if (state) params.set('state', state);
+        if (district) params.set('district', district);
+        if (commodity) params.set('commodity', commodity);
+
+        const url = `{% url 'core:market_prices' %}?${params.toString()}`;
+
+        // Update browser URL without reload
+        window.history.pushState(null, '', url);
+
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+            renderTable(data.prices || []);
+            updateFilterBanner(state, district, commodity, (data.prices || []).length);
+            updateActiveChips(commodity);
+        })
+        .catch(err => {
+            console.error("Error fetching mandi data:", err);
+            // Fallback to normal form submission if fetch failed
+            form.submit();
+        })
+        .finally(() => {
+            filterBtn.disabled = false;
+            btnText.textContent = '{% trans "Filter" %}';
+            tbody.style.opacity = '1';
+        });
+    }
+
+    // Render table rows
+    function renderTable(prices) {
+        tbody.innerHTML = '';
+        countBadge.textContent = prices.length;
+
+        if (prices.length === 0) {
+            tbody.innerHTML = `
+                <tr id="empty-row">
+                    <td colspan="7" class="text-center py-5">
+                        <div class="text-muted">
+                            <i class="bi bi-search display-6 d-block mb-2 text-secondary"></i>
+                            <h5>{% trans "No price records found" %}</h5>
+                            <p class="small mb-3">{% trans "Try choosing a different district or crop from the filters above." %}</p>
+                            <button type="button" class="btn btn-outline-success btn-sm px-3" onclick="resetAllFilters()">
+                                <i class="bi bi-arrow-clockwise me-1"></i> {% trans "View All Mandi Rates" %}
+                            </button>
+                        </div>
+                    </td>
+                </tr>`;
+            return;
+        }
+
+        prices.forEach(item => {
+            const row = `
+                <tr>
+                    <td class="ps-3 fw-bold text-dark">
+                        ${escapeHtml(item.market)} 
+                        <span class="text-muted small fw-normal d-block">(${escapeHtml(item.district)}, ${escapeHtml(item.state)})</span>
+                    </td>
+                    <td>
+                        <span class="fw-semibold text-success-emphasis">${escapeHtml(item.commodity)}</span>
+                    </td>
+                    <td><span class="badge bg-light text-dark border px-2 py-1">${escapeHtml(item.variety)}</span></td>
+                    <td class="text-end text-muted">₹${escapeHtml(String(item.min_price))}</td>
+                    <td class="text-end text-muted">₹${escapeHtml(String(item.max_price))}</td>
+                    <td class="text-end fw-bold text-success fs-6 pe-3">
+                        <span class="badge bg-success-subtle text-success fs-6 border border-success-subtle px-2 py-1">
+                            ₹${escapeHtml(String(item.modal_price))}
+                        </span>
+                    </td>
+                    <td class="small text-muted">
+                        <span class="badge bg-secondary-subtle text-secondary">${escapeHtml(item.arrival_date)}</span>
+                    </td>
+                </tr>`;
+            tbody.insertAdjacentHTML('beforeend', row);
+        });
+    }
+
+    // Update banner with active filter summary
+    function updateFilterBanner(state, district, commodity, count) {
+        if (!district && !commodity) {
+            statusBanner.classList.add('d-none');
+            return;
+        }
+
+        let summary = `{% trans "Filtered by" %}: `;
+        if (district) summary += `<strong>{% trans "District" %}:</strong> ${escapeHtml(district)} &nbsp;`;
+        if (commodity) summary += `<strong>{% trans "Crop" %}:</strong> ${escapeHtml(commodity)}`;
+
+        activeFilterText.innerHTML = summary;
+        statusBanner.classList.remove('d-none');
+    }
+
+    // Update active highlight on quick crop chips
+    function updateActiveChips(activeCrop) {
+        const normActive = (activeCrop || '').toLowerCase();
+        cropChips.forEach(chip => {
+            const chipCrop = (chip.getAttribute('data-crop') || '').toLowerCase();
+            if ((!normActive && !chipCrop) || (normActive && chipCrop && (normActive.includes(chipCrop) || chipCrop.includes(normActive)))) {
+                chip.classList.remove('btn-outline-secondary');
+                chip.classList.add('btn-success');
+            } else {
+                chip.classList.remove('btn-success');
+                chip.classList.add('btn-outline-secondary');
+            }
+        });
+    }
+
+    // Escape HTML helper
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // Reset filters
+    function resetAllFilters() {
+        stateInput.value = 'Maharashtra';
+        districtInput.value = '';
+        commodityInput.value = '';
+        applyFilter();
+    }
+
+    // Form submit listener
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        applyFilter();
+    });
+
+    // Quick chip click listener
+    cropChips.forEach(chip => {
+        chip.addEventListener('click', function() {
+            const crop = this.getAttribute('data-crop');
+            commodityInput.value = crop;
+            applyFilter();
+        });
+    });
+
+    // Clear filter banner button listener
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', resetAllFilters);
+    }
+</script>
+{% endblock %}

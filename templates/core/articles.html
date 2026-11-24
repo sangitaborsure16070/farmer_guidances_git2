@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Farming Articles & Guides | 🌾 KisanMitra{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row align-items-center mb-4">
+        <div class="col-md-8">
+            <h2 class="fw-bold text-success mb-1">
+                <i class="bi bi-newspaper"></i> Farming Articles & Expert Guides
+            </h2>
+            <p class="text-muted mb-0">
+                Explore evidence-based agricultural practices, disease management, irrigation precision, and farm economics.
+            </p>
+        </div>
+        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6">
+                <i class="bi bi-journal-text me-1"></i> {{ total_count }} Articles Available
+            </span>
+        </div>
+    </div>
+
+    <!-- Filter and Search Bar -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-3 p-md-4">
+            <form method="GET" action="{% url 'core:articles' %}" class="row g-3 align-items-center mb-3">
+                <div class="col-md-8">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-muted">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" name="search" class="form-control border-start-0" placeholder="Search by crop, disease, or topic (e.g. Onion, Drip, Organic, Cotton)..." value="{{ search_query }}">
+                        {% if selected_category and selected_category != 'All' %}
+                        <input type="hidden" name="category" value="{{ selected_category }}">
+                        {% endif %}
+                        <button class="btn btn-success px-4 fw-semibold" type="submit">Search</button>
+                    </div>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    {% if search_query or selected_category != 'All' %}
+                    <a href="{% url 'core:articles' %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-x-circle me-1"></i> Clear Filter
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+
+            <!-- Category Filter Pills -->
+            <div class="d-flex flex-wrap align-items-center gap-2 pt-2 border-top">
+                <span class="small fw-bold text-muted me-2"><i class="bi bi-tags-fill text-success"></i> Categories:</span>
+                {% for cat in categories %}
+                <a href="{% url 'core:articles' %}?category={{ cat }}{% if search_query %}&search={{ search_query }}{% endif %}" 
+                   class="btn btn-sm rounded-pill px-3 py-1 text-decoration-none {% if selected_category == cat %}btn-success{% else %}btn-outline-secondary{% endif %}">
+                    {% if cat == 'All' %}All Articles{% else %}{{ cat }}{% endif %}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Articles Grid -->
+    <div class="row g-4">
+        {% for article in articles %}
+        <div class="col-lg-4 col-md-6">
+            <div class="card card-km h-100 border-0 shadow-sm d-flex flex-column rounded-3 overflow-hidden bg-white">
+                <!-- Top Header Band -->
+                <div class="p-3 bg-light border-bottom d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fs-4">{{ article.icon }}</span>
+                        <span class="badge {{ article.badge_class }} small">{{ article.category }}</span>
+                    </div>
+                    <span class="small text-muted">
+                        <i class="bi bi-clock me-1"></i>{{ article.read_time }}
+                    </span>
+                </div>
+
+                <!-- Card Body -->
+                <div class="card-body p-3 p-md-4 d-flex flex-column">
+                    <h5 class="fw-bold mb-2">
+                        <a href="{% url 'core:article_detail' article.id %}" class="text-decoration-none text-dark hover-success">
+                            {{ article.title }}
+                        </a>
+                    </h5>
+                    <p class="small text-muted mb-3 flex-grow-1">
+                        {{ article.summary }}
+                    </p>
+
+                    <!-- Author and Date -->
+                    <div class="d-flex align-items-center justify-content-between text-muted small pt-3 border-top mb-3">
+                        <span><i class="bi bi-person me-1"></i>{{ article.author|truncatechars:26 }}</span>
+                        <span><i class="bi bi-calendar3 me-1"></i>{{ article.date }}</span>
+                    </div>
+
+                    <!-- Action Button -->
+                    <a href="{% url 'core:article_detail' article.id %}" class="btn btn-outline-success w-100 fw-semibold d-flex align-items-center justify-content-center">
+                        Read Full Article <i class="bi bi-arrow-right ms-2"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 py-5 text-center">
+            <div class="text-muted">
+                <i class="bi bi-journal-x display-3 d-block mb-3 text-secondary"></i>
+                <h4 class="fw-bold">No Articles Found</h4>
+                <p class="small mb-4">Try searching with different keywords or select another category from the filters above.</p>
+                <a href="{% url 'core:articles' %}" class="btn btn-success px-4">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> View All Articles
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

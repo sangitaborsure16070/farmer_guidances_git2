@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load i18n crispy_forms_tags %}
+
+{% block title %}KisanMitra | {% trans "Add Crop" %}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <div class="card card-km p-4">
+                <h3 class="fw-bold text-success mb-2">🌱 {% trans "Add Crop to Farm" %}</h3>
+                <p class="text-muted mb-4">📍 <strong>{% trans "Farm" %}:</strong> {{ farm.farm_name }}</p>
+
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-kisanmitra-primary px-4">{% trans "Save Crop" %}</button>
+                        <a href="{% url 'farms:farm_detail' farm.id %}" class="btn btn-outline-secondary">{% trans "Cancel" %}</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

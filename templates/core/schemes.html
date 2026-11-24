@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Government Schemes" %} | 🌾 KisanMitra{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row align-items-center mb-4">
+        <div class="col-md-8">
+            <h2 class="fw-bold text-success mb-1">
+                <i class="bi bi-bank"></i> {% trans "Government Agricultural Schemes" %}
+            </h2>
+            <p class="text-muted">{% trans "Explore subsidies, credit support, and financial aid options available for farmers." %}</p>
+        </div>
+    </div>
+
+    <!-- Category Filter Tabs -->
+    <div class="d-flex gap-2 mb-4 flex-wrap" id="category-tabs">
+        {% for cat in categories %}
+            <a href="?category={{ cat }}" class="btn btn-sm {% if cat == selected_category %}btn-success{% else %}btn-outline-secondary{% endif %} rounded-pill px-3">
+                {{ cat }}
+            </a>
+        {% endfor %}
+    </div>
+
+    <!-- Schemes Cards Grid -->
+    <div class="row g-4" id="schemes-container">
+        {% for scheme in schemes %}
+        <div class="col-md-6 col-lg-6">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="p-3 bg-success-subtle text-success rounded-circle">
+                            <i class="bi {{ scheme.icon }} fs-3"></i>
+                        </div>
+                        <div>
+                            <span class="badge bg-light text-dark border mb-1">{{ scheme.category }}</span>
+                            <h5 class="fw-bold mb-0 text-dark">{{ scheme.title }}</h5>
+                        </div>
+                    </div>
+                    
+                    <p class="text-muted small flex-grow-1">{{ scheme.description }}</p>
+
+                    <div class="bg-light p-3 rounded mb-3">
+                        <div class="small fw-bold text-success"><i class="bi bi-gift"></i> {% trans "Benefit" %}:</div>
+                        <div class="small text-dark">{{ scheme.benefit }}</div>
+                        <hr class="my-2">
+                        <div class="small fw-bold text-secondary"><i class="bi bi-check-circle"></i> {% trans "Eligibility" %}:</div>
+                        <div class="small text-muted">{{ scheme.eligibility }}</div>
+                    </div>
+
+                    <a href="{{ scheme.link }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-success btn-sm w-100">
+                        {% trans "Apply / View Official Portal" %} <i class="bi bi-box-arrow-up-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5 text-muted">
+            {% trans "No schemes found in this category." %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

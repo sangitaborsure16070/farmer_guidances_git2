@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% load i18n crispy_forms_tags %}
+
+{% block title %}KisanMitra | {{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card card-km p-4">
+                <h3 class="fw-bold text-success mb-4">🚜 {{ title }}</h3>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            {{ form.farm_name|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.farm_size|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.size_unit|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.soil_type|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.irrigation_type|as_crispy_field }}
+                        </div>
+
+                        <hr class="my-4">
+                        <h5 class="fw-bold text-secondary">📍 {% trans "Farm Location" %}</h5>
+
+                        <div class="col-md-6">
+                            {{ form.state|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.district|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.taluka|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.village|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.latitude|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.longitude|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-kisanmitra-primary px-4">{% trans "Save Farm" %}</button>
+                        <a href="{% url 'farms:farm_list' %}" class="btn btn-outline-secondary">{% trans "Cancel" %}</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

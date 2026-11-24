@@ -1,0 +1,89 @@
+:root {
+    --km-primary: #2e7d32;
+    --km-primary-dark: #1b5e20;
+    --km-accent: #f9a825;
+    --km-bg-light: #f4f6f8;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--km-bg-light);
+    color: #333333;
+}
+
+.navbar-kisanmitra {
+    background-color: var(--km-primary);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.navbar-kisanmitra .navbar-brand,
+.navbar-kisanmitra .nav-link {
+    color: #ffffff !important;
+}
+
+.navbar-kisanmitra .nav-link:hover {
+    color: var(--km-accent) !important;
+}
+
+.hero-section {
+    background: linear-gradient(135deg, rgba(46,125,50,0.9), rgba(27,94,32,0.95)), url('/static/images/hero-bg.jpg') center/cover;
+    color: white;
+    padding: 80px 0;
+    border-radius: 0 0 24px 24px;
+}
+
+.btn-kisanmitra-primary {
+    background-color: var(--km-primary);
+    color: #ffffff;
+    border: none;
+    padding: 10px 24px;
+    font-weight: 600;
+    border-radius: 8px;
+}
+
+.btn-kisanmitra-primary:hover {
+    background-color: var(--km-primary-dark);
+    color: #ffffff;
+}
+
+.btn-kisanmitra-accent {
+    background-color: var(--km-accent);
+    color: #212529;
+    font-weight: 600;
+    border-radius: 8px;
+}
+
+.card-km {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    transition: transform 0.2s ease-in-out;
+}
+
+.card-km:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.hover-success {
+    transition: color 0.2s ease;
+}
+
+.hover-success:hover {
+    color: var(--km-primary) !important;
+}
+
+.article-body {
+    font-size: 1.05rem;
+    line-height: 1.8;
+}
+
+.article-body p {
+    color: #374151;
+    margin-bottom: 1.25rem;
+}
+
+footer {
+    background-color: #1a251e;
+    color: #cfd8dc;
+}

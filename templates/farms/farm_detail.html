@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ farm.farm_name }} | KisanMitra{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="card card-km p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="fw-bold text-success mb-0">🚜 {{ farm.farm_name }}</h3>
+                    <a href="{% url 'farms:farm_edit' farm.id %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-pencil"></i> {% trans "Edit Farm" %}
+                    </a>
+                </div>
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <p class="mb-1 text-muted small">{% trans "Farm Size" %}</p>
+                        <h6>{{ farm.farm_size }} {{ farm.get_size_unit_display }}</h6>
+                    </div>
+                    <div class="col-sm-6">
+                        <p class="mb-1 text-muted small">{% trans "Soil Type" %}</p>
+                        <h6>{{ farm.get_soil_type_display }}</h6>
+                    </div>
+                    <div class="col-sm-6">
+                        <p class="mb-1 text-muted small">{% trans "Irrigation Type" %}</p>
+                        <h6>{{ farm.get_irrigation_type_display }}</h6>
+                    </div>
+                    <div class="col-sm-6">
+                        <p class="mb-1 text-muted small">{% trans "Location" %}</p>
+                        <h6>{{ farm.village|default:"" }} {{ farm.taluka|default:"" }} {{ farm.district|default:"" }}</h6>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card card-km p-4 bg-light">
+                <h5 class="fw-bold text-dark mb-3">⚡ {% trans "Quick Actions" %}</h5>
+                <div class="d-grid gap-2">
+                    <a href="{% url 'farms:crop_add' farm.id %}" class="btn btn-kisanmitra-primary text-start">
+                        ➕ {% trans "Add New Crop" %}
+                    </a>
+                    <a href="{% url 'farms:farm_list' %}" class="btn btn-outline-secondary text-start">
+                        ⬅️ {% trans "Back to All Farms" %}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Crops Section -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold text-secondary mb-0">🌱 {% trans "Crops on this Farm" %}</h4>
+        <a href="{% url 'farms:crop_add' farm.id %}" class="btn btn-sm btn-success">➕ {% trans "Add Crop" %}</a>
+    </div>
+
+    {% if crops %}
+        <div class="table-responsive card card-km p-3">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>{% trans "Crop" %}</th>
+                        <th>{% trans "Variety" %}</th>
+                        <th>{% trans "Area" %}</th>
+                        <th>{% trans "Season" %}</th>
+                        <th>{% trans "Sowing Date" %}</th>
+                        <th>{% trans "Status" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for crop in crops %}
+                        <tr>
+                            <td class="fw-bold text-success">{{ crop.crop_name }}</td>
+                            <td>{{ crop.variety|default:"-" }}</td>
+                            <td>{{ crop.area_allocated }} {% trans "Acres" %}</td>
+                            <td>{{ crop.get_season_display }}</td>
+                            <td>{{ crop.sowing_date|default:"-" }}</td>
+                            <td><span class="badge bg-info text-dark">{{ crop.get_status_display }}</span></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="card card-km p-4 text-center">
+            <p class="text-muted mb-2">{% trans "No crops recorded for this farm yet." %}</p>
+            <div>
+                <a href="{% url 'farms:crop_add' farm.id %}" class="btn btn-sm btn-outline-success">{% trans "Record First Crop" %}</a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

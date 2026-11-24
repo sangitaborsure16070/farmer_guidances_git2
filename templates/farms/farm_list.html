@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}KisanMitra | {% trans "My Farms" %}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-success mb-0">🚜 {% trans "My Farms" %}</h3>
+        <a href="{% url 'farms:farm_add' %}" class="btn btn-kisanmitra-primary">
+            <i class="bi bi-plus-circle me-1"></i> {% trans "Add New Farm" %}
+        </a>
+    </div>
+
+    {% if farms %}
+        <div class="row g-4">
+            {% for farm in farms %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card card-km h-100 p-4">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h5 class="fw-bold mb-0 text-success">{{ farm.farm_name }}</h5>
+                            <span class="badge bg-success">{{ farm.farm_size }} {{ farm.get_size_unit_display }}</span>
+                        </div>
+                        <p class="text-muted small mb-2">📍 {{ farm.district|default:_("District Not Set") }}, {{ farm.taluka|default:"" }}</p>
+                        <p class="small mb-1"><strong>🌱 {% trans "Soil" %}:</strong> {{ farm.get_soil_type_display }}</p>
+                        <p class="small mb-3"><strong>💧 {% trans "Irrigation" %}:</strong> {{ farm.get_irrigation_type_display }}</p>
+                        
+                        <div class="border-top pt-3 mt-auto d-flex justify-content-between align-items-center">
+                            <span class="small text-secondary">🌾 {{ farm.crops.count }} {% trans "Crops" %}</span>
+                            <a href="{% url 'farms:farm_detail' farm.id %}" class="btn btn-outline-success btn-sm">{% trans "View Farm" %} &rarr;</a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="card card-km p-5 text-center">
+            <div class="fs-1 mb-2">🚜</div>
+            <h5 class="fw-bold">{% trans "No Farms Registered Yet" %}</h5>
+            <p class="text-muted mb-3">{% trans "Add your farm details to get personalized crop guidance, weather updates, and soil recommendations." %}</p>
+            <div>
+                <a href="{% url 'farms:farm_add' %}" class="btn btn-kisanmitra-primary px-4">{% trans "Add Your First Farm" %}</a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

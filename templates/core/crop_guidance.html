@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Crop Guidance & AI Advisory" %} | 🌾 KisanMitra{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row align-items-center mb-4">
+        <div class="col-md-8">
+            <h2 class="fw-bold text-success mb-1">
+                <i class="bi bi-patch-check"></i> {% trans "Crop Guidance & AI Advisory" %}
+            </h2>
+            <p class="text-muted">{% trans "Get tailored crop selection advice and smart diagnostic assistance for your farm." %}</p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Crop Recommendation Tool -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold text-dark mb-3"><i class="bi bi-sliders text-success"></i> {% trans "Find Best Crops for Your Land" %}</h5>
+                    
+                    <form id="recommendation-form" class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">{% trans "Select Season" %}</label>
+                            <select id="season-select" class="form-select">
+                                {% for s in seasons %}
+                                    <option value="{{ s }}" {% if s == selected_season %}selected{% endif %}>{{ s }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">{% trans "Select Soil Type" %}</label>
+                            <select id="soil-select" class="form-select">
+                                {% for soil in soils %}
+                                    <option value="{{ soil }}" {% if soil == selected_soil %}selected{% endif %}>{{ soil }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12 text-end">
+                            <button type="submit" class="btn btn-success px-4">
+                                <i class="bi bi-search"></i> {% trans "Get Recommendations" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Recommendations Grid -->
+            <h5 class="fw-bold text-secondary mb-3">{% trans "Recommended Crops" %}</h5>
+            <div class="row g-3" id="recommendations-container">
+                {% for crop in recommendations %}
+                <div class="col-md-6">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <i class="bi {{ crop.icon }} fs-4 text-success"></i>
+                                <h6 class="fw-bold mb-0 text-dark">{{ crop.name }}</h6>
+                            </div>
+                            <p class="small text-muted mb-2">{{ crop.description }}</p>
+                            <div class="d-flex justify-content-between small text-secondary bg-light p-2 rounded">
+                                <span><strong>Duration:</strong> {{ crop.duration }}</span>
+                                <span><strong>Water:</strong> {{ crop.water_requirement }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- AI Assistant / Query Box -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-success text-white py-3">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-robot me-2"></i> {% trans "AI Farm Assistant" %}</h5>
+                </div>
+                <div class="card-body p-4">
+                    <p class="small text-muted">{% trans "Ask a question about crop diseases, pest control, or fertilizer usage." %}</p>
+                    
+                    <form id="ai-query-form" class="mb-3">
+                        <div class="mb-2">
+                            <textarea id="ai-query-input" class="form-control" rows="3" placeholder="{% trans 'e.g., Yellow spots on wheat leaves or pest control tips...' %}" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-outline-success w-100">
+                            <i class="bi bi-send"></i> {% trans "Ask Assistant" %}
+                        </button>
+                    </form>
+
+                    <!-- Response Box -->
+                    <div id="ai-response-box" class="d-none alert alert-light border mt-3 p-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="badge bg-success" id="advisory-topic"></span>
+                            <span class="badge bg-warning text-dark" id="advisory-urgency"></span>
+                        </div>
+                        <p class="small mb-0 text-dark" id="advisory-text"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Handle Crop Recommendation Filter
+    document.getElementById('recommendation-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const season = document.getElementById('season-select').value;
+        const soil = document.getElementById('soil-select').value;
+
+        fetch(`{% url 'core:crop_guidance' %}?season=${encodeURIComponent(season)}&soil=${encodeURIComponent(soil)}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('recommendations-container');
+            container.innerHTML = '';
+            data.recommendations.forEach(crop => {
+                const card = `
+                    <div class="col-md-6">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <i class="bi ${crop.icon} fs-4 text-success"></i>
+                                    <h6 class="fw-bold mb-0 text-dark">${crop.name}</h6>
+                                </div>
+                                <p class="small text-muted mb-2">${crop.description}</p>
+                                <div class="d-flex justify-content-between small text-secondary bg-light p-2 rounded">
+                                    <span><strong>Duration:</strong> ${crop.duration}</span>
+                                    <span><strong>Water:</strong> ${crop.water_requirement}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                container.insertAdjacentHTML('beforeend', card);
+            });
+        });
+    });
+
+    // Handle AI Assistant Queries
+    document.getElementById('ai-query-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const query = document.getElementById('ai-query-input').value;
+
+        fetch(`{% url 'core:crop_guidance' %}?action=ask_ai&query=${encodeURIComponent(query)}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            const box = document.getElementById('ai-response-box');
+            document.getElementById('advisory-topic').textContent = data.advisory.topic;
+            document.getElementById('advisory-urgency').textContent = `Urgency: ${data.advisory.urgency}`;
+            document.getElementById('advisory-text').textContent = data.advisory.advice;
+            box.classList.remove('d-none');
+        });
+    });
+</script>
+{% endblock %}

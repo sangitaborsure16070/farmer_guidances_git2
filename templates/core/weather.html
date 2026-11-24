@@ -1,0 +1,541 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Live Weather & Agricultural Forecast | 🌾 KisanMitra{% endblock %}
+
+{% block extra_css %}
+<style>
+    .weather-hero-card {
+        background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 45%, #1565c0 100%);
+        border-radius: 20px;
+        color: white;
+        box-shadow: 0 10px 30px rgba(46, 125, 50, 0.25);
+        position: relative;
+        overflow: hidden;
+    }
+    .weather-hero-card::before {
+        content: "";
+        position: absolute;
+        top: -50px;
+        right: -50px;
+        width: 200px;
+        height: 200px;
+        background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%);
+        border-radius: 50%;
+    }
+    .weather-stat-card {
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 16px;
+        border: 1px solid #eef2f5;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .weather-stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 18px rgba(0,0,0,0.07);
+    }
+    .forecast-day-card {
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid #eef2f5;
+        padding: 14px 10px;
+        text-align: center;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+    .forecast-day-card:hover {
+        transform: translateY(-3px);
+        border-color: #2e7d32;
+        box-shadow: 0 6px 16px rgba(46, 125, 50, 0.12);
+    }
+    .advisory-card {
+        border-radius: 14px;
+        border-left: 5px solid;
+        background: #ffffff;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+        padding: 16px;
+        height: 100%;
+        transition: transform 0.2s ease;
+    }
+    .advisory-card:hover {
+        transform: translateY(-2px);
+    }
+    .advisory-card.good {
+        border-left-color: #2e7d32;
+    }
+    .advisory-card.warning {
+        border-left-color: #f57c00;
+    }
+    .advisory-card.danger {
+        border-left-color: #d32f2f;
+    }
+    .advisory-card.info {
+        border-left-color: #0288d1;
+    }
+    .city-chip {
+        font-size: 0.82rem;
+        transition: all 0.2s ease;
+    }
+    .city-chip.active {
+        background-color: #2e7d32 !important;
+        color: white !important;
+        border-color: #2e7d32 !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header & Search Bar -->
+    <div class="row align-items-center mb-4 g-3">
+        <div class="col-lg-6">
+            <h2 class="fw-bold text-success mb-1">
+                <i class="bi bi-cloud-sun-fill me-1"></i> Live Agricultural Weather
+            </h2>
+            <p class="text-muted mb-0">Hyper-local forecasts, satellite rainfall probability, and smart farm advisories.</p>
+        </div>
+        <div class="col-lg-6">
+            <form id="weather-search-form" class="d-flex gap-2">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0 text-muted">
+                        <i class="bi bi-geo-alt"></i>
+                    </span>
+                    <input type="text" id="city-input" class="form-control border-start-0" placeholder="Search city, district, or taluka (e.g. Pune, Baramati, Nashik)..." value="{{ selected_city }}" required autocomplete="off">
+                    <button type="submit" id="search-btn" class="btn btn-success px-3 fw-semibold">
+                        <i class="bi bi-search me-1"></i> Search
+                    </button>
+                </div>
+                <button type="button" id="gps-btn" class="btn btn-outline-success d-flex align-items-center gap-1 text-nowrap" title="Detect GPS Location">
+                    <i class="bi bi-crosshair"></i> <span class="d-none d-sm-inline">My Location</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Quick Popular Cities Strip -->
+    <div class="card border-0 shadow-sm mb-4 bg-white rounded-3">
+        <div class="card-body p-2 p-md-3 d-flex flex-wrap align-items-center gap-1">
+            <span class="small fw-bold text-muted me-2"><i class="bi bi-lightning-charge-fill text-warning"></i> Quick Cities:</span>
+            {% for c in popular_cities %}
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 city-chip {% if c|lower == selected_city|lower %}active{% endif %}" data-city="{{ c }}">
+                {{ c }}
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Weather Content Wrapper -->
+    <div id="weather-content" class="transition-all">
+        <!-- Hero Weather Banner -->
+        <div class="card border-0 weather-hero-card p-4 p-md-5 mb-4">
+            <div class="row align-items-center g-4">
+                <div class="col-md-7">
+                    <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                        <span class="badge bg-white bg-opacity-25 px-3 py-1 rounded-pill fs-6 text-white">
+                            <i class="bi bi-geo-alt-fill text-warning"></i> <span id="weather-city">{{ weather.city }}</span>, <span id="weather-state">{{ weather.state }}</span>
+                        </span>
+                        <span class="badge bg-black bg-opacity-25 px-2 py-1 rounded-pill small text-light">
+                            <i class="bi bi-clock me-1"></i> Updated: <span id="weather-updated">{{ weather.updated_at }}</span>
+                        </span>
+                    </div>
+
+                    <div class="d-flex align-items-baseline gap-2 mb-2">
+                        <span class="display-1 fw-bold text-white lh-1" id="weather-temp">{{ weather.temperature }}</span>
+                        <span class="fs-1 fw-semibold text-white-50">&deg;C</span>
+                    </div>
+
+                    <div class="fs-4 text-warning fw-semibold mb-2 d-flex align-items-center gap-2">
+                        <span id="weather-icon-symbol" class="fs-3">{{ weather.icon_symbol }}</span>
+                        <span id="weather-desc">{{ weather.description }}</span>
+                    </div>
+
+                    <div class="text-white-50 small mb-0">
+                        <i class="bi bi-arrow-up text-warning"></i> High: <strong class="text-white"><span id="weather-max">{{ weather.temp_max }}</span>&deg;C</strong>
+                        &nbsp;|&nbsp;
+                        <i class="bi bi-arrow-down text-info"></i> Low: <strong class="text-white"><span id="weather-min">{{ weather.temp_min }}</span>&deg;C</strong>
+                        &nbsp;|&nbsp;
+                        Feels like: <strong class="text-white"><span id="weather-feels">{{ weather.feels_like }}</span>&deg;C</strong>
+                    </div>
+                </div>
+
+                <!-- Hero Right Summary Badges -->
+                <div class="col-md-5">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="p-3 rounded-3 bg-white bg-opacity-10 border border-white border-opacity-10 text-center">
+                                <i class="bi bi-droplet-fill fs-3 text-info d-block mb-1"></i>
+                                <span class="small text-white-50 d-block">Humidity</span>
+                                <strong class="fs-5 text-white"><span id="weather-humidity-hero">{{ weather.humidity }}</span>%</strong>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-3 rounded-3 bg-white bg-opacity-10 border border-white border-opacity-10 text-center">
+                                <i class="bi bi-wind fs-3 text-warning d-block mb-1"></i>
+                                <span class="small text-white-50 d-block">Wind Speed</span>
+                                <strong class="fs-5 text-white"><span id="weather-wind-hero">{{ weather.wind_speed }}</span> km/h</strong>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-3 rounded-3 bg-white bg-opacity-10 border border-white border-opacity-10 text-center">
+                                <i class="bi bi-cloud-rain-fill fs-3 text-light d-block mb-1"></i>
+                                <span class="small text-white-50 d-block">Rain Chance</span>
+                                <strong class="fs-5 text-white"><span id="weather-rain-hero">{{ weather.rain_chance }}</span>%</strong>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-3 rounded-3 bg-white bg-opacity-10 border border-white border-opacity-10 text-center">
+                                <i class="bi bi-sun-fill fs-3 text-warning d-block mb-1"></i>
+                                <span class="small text-white-50 d-block">UV Index</span>
+                                <strong class="fs-5 text-white"><span id="weather-uv-hero">{{ weather.uv_index }}</span></strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Agricultural Advisories Section -->
+        <div class="mb-4">
+            <h4 class="fw-bold text-success mb-3">
+                <i class="bi bi-shield-check me-1"></i> Smart Agricultural Advisories
+            </h4>
+            <div class="row g-3" id="advisories-container">
+                <!-- Spraying Advisory -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="advisory-card {{ weather.advisories.spraying.status }}" id="advisory-spraying-card">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="fs-3">🚜</span>
+                            <span class="badge {% if weather.advisories.spraying.status == 'good' %}bg-success{% elif weather.advisories.spraying.status == 'warning' %}bg-warning text-dark{% else %}bg-danger{% endif %}" id="advisory-spraying-badge">
+                                Spraying
+                            </span>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-1" id="advisory-spraying-title">{{ weather.advisories.spraying.title }}</h6>
+                        <p class="small text-muted mb-0" id="advisory-spraying-desc">{{ weather.advisories.spraying.desc }}</p>
+                    </div>
+                </div>
+
+                <!-- Irrigation Advisory -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="advisory-card {{ weather.advisories.irrigation.status }}" id="advisory-irrigation-card">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="fs-3">💧</span>
+                            <span class="badge {% if weather.advisories.irrigation.status == 'good' %}bg-success{% elif weather.advisories.irrigation.status == 'warning' %}bg-warning text-dark{% else %}bg-info{% endif %}" id="advisory-irrigation-badge">
+                                Irrigation
+                            </span>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-1" id="advisory-irrigation-title">{{ weather.advisories.irrigation.title }}</h6>
+                        <p class="small text-muted mb-0" id="advisory-irrigation-desc">{{ weather.advisories.irrigation.desc }}</p>
+                    </div>
+                </div>
+
+                <!-- Harvest & Drying Advisory -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="advisory-card {{ weather.advisories.harvest.status }}" id="advisory-harvest-card">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="fs-3">🌾</span>
+                            <span class="badge {% if weather.advisories.harvest.status == 'good' %}bg-success{% else %}bg-warning text-dark{% endif %}" id="advisory-harvest-badge">
+                                Harvest & Sun Drying
+                            </span>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-1" id="advisory-harvest-title">{{ weather.advisories.harvest.title }}</h6>
+                        <p class="small text-muted mb-0" id="advisory-harvest-desc">{{ weather.advisories.harvest.desc }}</p>
+                    </div>
+                </div>
+
+                <!-- Disease Risk Advisory -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="advisory-card {{ weather.advisories.disease.status }}" id="advisory-disease-card">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="fs-3">🦠</span>
+                            <span class="badge {% if weather.advisories.disease.status == 'danger' %}bg-danger{% elif weather.advisories.disease.status == 'warning' %}bg-warning text-dark{% else %}bg-success{% endif %}" id="advisory-disease-badge">
+                                Pest / Disease
+                            </span>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-1" id="advisory-disease-title">{{ weather.advisories.disease.title }}</h6>
+                        <p class="small text-muted mb-0" id="advisory-disease-desc">{{ weather.advisories.disease.desc }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Metrics Grid -->
+        <div class="mb-4">
+            <h4 class="fw-bold text-success mb-3">
+                <i class="bi bi-speedometer2 me-1"></i> Meteorological Details
+            </h4>
+            <div class="row g-3 text-center">
+                <div class="col-6 col-md-3">
+                    <div class="weather-stat-card">
+                        <i class="bi bi-thermometer-half fs-3 text-warning mb-1 d-block"></i>
+                        <span class="small text-muted">Feels Like</span>
+                        <div class="fw-bold fs-5 text-dark"><span id="weather-feels-grid">{{ weather.feels_like }}</span>&deg;C</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="weather-stat-card">
+                        <i class="bi bi-droplet-fill fs-3 text-primary mb-1 d-block"></i>
+                        <span class="small text-muted">Humidity</span>
+                        <div class="fw-bold fs-5 text-dark"><span id="weather-humidity-grid">{{ weather.humidity }}</span>%</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="weather-stat-card">
+                        <i class="bi bi-wind fs-3 text-info mb-1 d-block"></i>
+                        <span class="small text-muted">Wind Speed & Dir</span>
+                        <div class="fw-bold fs-5 text-dark"><span id="weather-wind-grid">{{ weather.wind_speed }}</span> km/h (<span id="weather-wind-dir">{{ weather.wind_direction }}</span>)</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="weather-stat-card">
+                        <i class="bi bi-cloud-rain-fill fs-3 text-secondary mb-1 d-block"></i>
+                        <span class="small text-muted">Rain Probability</span>
+                        <div class="fw-bold fs-5 text-dark"><span id="weather-rain-grid">{{ weather.rain_chance }}</span>%</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="weather-stat-card">
+                        <i class="bi bi-sun-fill fs-3 text-warning mb-1 d-block"></i>
+                        <span class="small text-muted">Max UV Index</span>
+                        <div class="fw-bold fs-5 text-dark"><span id="weather-uv-grid">{{ weather.uv_index }}</span> / 11</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="weather-stat-card">
+                        <i class="bi bi-sunset-fill fs-3 text-danger mb-1 d-block"></i>
+                        <span class="small text-muted">Sunrise / Sunset</span>
+                        <div class="fw-bold fs-6 text-dark"><span id="weather-sunrise">{{ weather.sunrise }}</span> / <span id="weather-sunset">{{ weather.sunset }}</span></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="weather-stat-card">
+                        <i class="bi bi-compass fs-3 text-secondary mb-1 d-block"></i>
+                        <span class="small text-muted">Atmospheric Pressure</span>
+                        <div class="fw-bold fs-5 text-dark"><span id="weather-pressure">{{ weather.pressure }}</span> hPa</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="weather-stat-card">
+                        <i class="bi bi-cloud-drizzle fs-3 text-primary mb-1 d-block"></i>
+                        <span class="small text-muted">Precipitation Today</span>
+                        <div class="fw-bold fs-5 text-dark"><span id="weather-precip">{{ weather.precipitation }}</span> mm</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7-Day Agricultural Forecast -->
+        <div class="mb-4">
+            <h4 class="fw-bold text-success mb-3">
+                <i class="bi bi-calendar-week me-1"></i> 7-Day Agricultural Forecast
+            </h4>
+            <div class="row g-2" id="forecast-container">
+                {% for f in weather.forecast %}
+                <div class="col-6 col-md">
+                    <div class="forecast-day-card h-100">
+                        <div class="fw-bold small {% if forloop.first %}text-success{% else %}text-muted{% endif %} mb-1">{{ f.day }}</div>
+                        <div class="text-secondary small mb-2" style="font-size: 0.75rem;">{{ f.date }}</div>
+                        <div class="fs-2 my-2">{{ f.icon }}</div>
+                        <div class="small fw-semibold text-dark mb-1">{{ f.condition }}</div>
+                        <div class="small text-dark fw-bold">
+                            {{ f.temp_max }}&deg; <span class="text-muted fw-normal" style="font-size: 0.8rem;">/ {{ f.temp_min }}&deg;</span>
+                        </div>
+                        <div class="mt-2">
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill small" style="font-size: 0.7rem;">
+                                💧 {{ f.rain_prob }}%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const form = document.getElementById('weather-search-form');
+    const cityInput = document.getElementById('city-input');
+    const searchBtn = document.getElementById('search-btn');
+    const gpsBtn = document.getElementById('gps-btn');
+    const cityChips = document.querySelectorAll('.city-chip');
+    const content = document.getElementById('weather-content');
+
+    function fetchWeather(params) {
+        content.style.opacity = '0.5';
+        searchBtn.disabled = true;
+
+        const url = `{% url 'core:weather' %}?${params.toString()}`;
+
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(res => {
+                if (!res.ok) throw new Error("Weather request failed");
+                return res.json();
+            })
+            .then(data => {
+                updateUI(data);
+            })
+            .catch(err => {
+                console.error("Error fetching weather:", err);
+                alert("Could not load weather data for the specified location. Please try again.");
+            })
+            .finally(() => {
+                content.style.opacity = '1';
+                searchBtn.disabled = false;
+            });
+    }
+
+    function updateUI(data) {
+        // Hero values
+        document.getElementById('weather-city').textContent = data.city;
+        document.getElementById('weather-state').textContent = data.state;
+        document.getElementById('weather-updated').textContent = data.updated_at || 'Just now';
+        document.getElementById('weather-temp').textContent = data.temperature;
+        document.getElementById('weather-icon-symbol').textContent = data.icon_symbol || '🌤️';
+        document.getElementById('weather-desc').textContent = data.description;
+        document.getElementById('weather-max').textContent = data.temp_max;
+        document.getElementById('weather-min').textContent = data.temp_min;
+        document.getElementById('weather-feels').textContent = data.feels_like;
+
+        // Hero quick metrics
+        document.getElementById('weather-humidity-hero').textContent = data.humidity;
+        document.getElementById('weather-wind-hero').textContent = data.wind_speed;
+        document.getElementById('weather-rain-hero').textContent = data.rain_chance;
+        document.getElementById('weather-uv-hero').textContent = data.uv_index;
+
+        // Grid metrics
+        document.getElementById('weather-feels-grid').textContent = data.feels_like;
+        document.getElementById('weather-humidity-grid').textContent = data.humidity;
+        document.getElementById('weather-wind-grid').textContent = data.wind_speed;
+        document.getElementById('weather-wind-dir').textContent = data.wind_direction;
+        document.getElementById('weather-rain-grid').textContent = data.rain_chance;
+        document.getElementById('weather-uv-grid').textContent = data.uv_index;
+        document.getElementById('weather-sunrise').textContent = data.sunrise;
+        document.getElementById('weather-sunset').textContent = data.sunset;
+        document.getElementById('weather-pressure').textContent = data.pressure;
+        document.getElementById('weather-precip').textContent = data.precipitation;
+
+        // Update advisories
+        if (data.advisories) {
+            updateAdvisoryCard('spraying', data.advisories.spraying);
+            updateAdvisoryCard('irrigation', data.advisories.irrigation);
+            updateAdvisoryCard('harvest', data.advisories.harvest);
+            updateAdvisoryCard('disease', data.advisories.disease);
+        }
+
+        // Update 7-day forecast
+        if (data.forecast && data.forecast.length > 0) {
+            const container = document.getElementById('forecast-container');
+            container.innerHTML = '';
+            data.forecast.forEach((f, idx) => {
+                const dayClass = idx === 0 ? 'text-success' : 'text-muted';
+                const col = `
+                    <div class="col-6 col-md">
+                        <div class="forecast-day-card h-100">
+                            <div class="fw-bold small ${dayClass} mb-1">${escapeHtml(f.day)}</div>
+                            <div class="text-secondary small mb-2" style="font-size: 0.75rem;">${escapeHtml(f.date)}</div>
+                            <div class="fs-2 my-2">${f.icon}</div>
+                            <div class="small fw-semibold text-dark mb-1">${escapeHtml(f.condition)}</div>
+                            <div class="small text-dark fw-bold">
+                                ${f.temp_max}&deg; <span class="text-muted fw-normal" style="font-size: 0.8rem;">/ ${f.temp_min}&deg;</span>
+                            </div>
+                            <div class="mt-2">
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill small" style="font-size: 0.7rem;">
+                                    💧 ${f.rain_prob}%
+                                </span>
+                            </div>
+                        </div>
+                    </div>`;
+                container.insertAdjacentHTML('beforeend', col);
+            });
+        }
+
+        // Update chip active classes
+        cityChips.forEach(chip => {
+            const cName = chip.getAttribute('data-city').toLowerCase();
+            if (cName === (data.city || '').toLowerCase()) {
+                chip.classList.add('active');
+            } else {
+                chip.classList.remove('active');
+            }
+        });
+
+        cityInput.value = data.city;
+    }
+
+    function updateAdvisoryCard(key, adv) {
+        if (!adv) return;
+        const card = document.getElementById(`advisory-${key}-card`);
+        const title = document.getElementById(`advisory-${key}-title`);
+        const desc = document.getElementById(`advisory-${key}-desc`);
+
+        if (card) {
+            card.className = `advisory-card ${adv.status}`;
+        }
+        if (title) title.textContent = adv.title;
+        if (desc) desc.textContent = adv.desc;
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // Submit form
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const city = cityInput.value.trim();
+        if (city) {
+            const params = new URLSearchParams();
+            params.set('city', city);
+            fetchWeather(params);
+        }
+    });
+
+    // Quick chip click
+    cityChips.forEach(chip => {
+        chip.addEventListener('click', function() {
+            const city = this.getAttribute('data-city');
+            cityInput.value = city;
+            const params = new URLSearchParams();
+            params.set('city', city);
+            fetchWeather(params);
+        });
+    });
+
+    // GPS Geolocation button
+    gpsBtn.addEventListener('click', function() {
+        if (!navigator.geolocation) {
+            alert("Geolocation is not supported by your browser.");
+            return;
+        }
+        gpsBtn.disabled = true;
+        gpsBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Locating...';
+
+        navigator.geolocation.getCurrentPosition(
+            function(pos) {
+                const params = new URLSearchParams();
+                params.set('lat', pos.coords.latitude);
+                params.set('lon', pos.coords.longitude);
+                fetchWeather(params);
+                gpsBtn.disabled = false;
+                gpsBtn.innerHTML = '<i class="bi bi-crosshair"></i> <span class="d-none d-sm-inline">My Location</span>';
+            },
+            function(err) {
+                console.warn("Geolocation denied or error:", err);
+                alert("Could not access your location. Please check browser permissions or search for your city directly.");
+                gpsBtn.disabled = false;
+                gpsBtn.innerHTML = '<i class="bi bi-crosshair"></i> <span class="d-none d-sm-inline">My Location</span>';
+            },
+            { timeout: 7000 }
+        );
+    });
+</script>
+{% endblock %}
